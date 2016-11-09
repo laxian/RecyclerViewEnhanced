@@ -52,6 +52,7 @@ public class RecyclerTouchListener implements RecyclerView.OnItemTouchListener, 
     private int mSwipingSlop;
     private VelocityTracker mVelocityTracker;
     private int touchedPosition;
+    private RecyclerView.ViewHolder mVh;
     private View touchedView;
     private boolean mPaused;
     private boolean bgVisible, fgPartialViewClicked;
@@ -88,7 +89,7 @@ public class RecyclerTouchListener implements RecyclerView.OnItemTouchListener, 
                     Vibrator vibe = (Vibrator) act.getSystemService(Context.VIBRATOR_SERVICE);
                     vibe.vibrate(100);
                 }
-                mRowLongClickListener.onRowLongClicked(touchedPosition);
+                mRowLongClickListener.onRowLongClicked(touchedPosition, mVh);
             }
         }
     };
@@ -510,6 +511,11 @@ public class RecyclerTouchListener implements RecyclerView.OnItemTouchListener, 
                     touchedPosition = rView.getChildAdapterPosition(touchedView);
                     if (longClickable) {
                         mLongClickPerformed = false;
+
+                        View child0 = rView.findChildViewUnder(motionEvent.getX(), motionEvent.getY());
+                        if (child0!=null) {
+                            mVh = rView.getChildViewHolder(child0);
+                        }
                         handler.postDelayed(mLongPressed, LONG_CLICK_DELAY);
                     }
                     if (swipeable) {
@@ -904,7 +910,7 @@ public class RecyclerTouchListener implements RecyclerView.OnItemTouchListener, 
     }
 
     public interface OnRowLongClickListener {
-        void onRowLongClicked(int position);
+        void onRowLongClicked(int position, RecyclerView.ViewHolder vh);
     }
 
     public interface OnSwipeOptionsClickListener {

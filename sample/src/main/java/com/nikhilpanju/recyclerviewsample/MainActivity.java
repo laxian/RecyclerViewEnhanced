@@ -7,6 +7,7 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.helper.ItemTouchHelper;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,15 +16,18 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.nikhilpanju.recyclerviewenhanced.MyItemTouchCallback;
 import com.nikhilpanju.recyclerviewenhanced.OnActivityTouchListener;
 import com.nikhilpanju.recyclerviewenhanced.RecyclerTouchListener;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements RecyclerTouchListener.RecyclerTouchListenerHelper {
 
     RecyclerView mRecyclerView;
+    ItemTouchHelper mItenTouchHelper;
     MainAdapter mAdapter;
     String[] dialogItems;
     List<Integer> unclickableRows, unswipeableRows;
@@ -51,6 +55,9 @@ public class MainActivity extends AppCompatActivity implements RecyclerTouchList
         mRecyclerView.setAdapter(mAdapter);
         mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
+        final ItemTouchHelper itemTouchHelper = new ItemTouchHelper(new MyItemTouchCallback(mAdapter));
+        itemTouchHelper.attachToRecyclerView(mRecyclerView);
+
         onTouchListener = new RecyclerTouchListener(this, mRecyclerView);
         onTouchListener
                 .setIndependentViews(R.id.rowButton)
@@ -68,8 +75,9 @@ public class MainActivity extends AppCompatActivity implements RecyclerTouchList
                 })
                 .setLongClickable(true, new RecyclerTouchListener.OnRowLongClickListener() {
                     @Override
-                    public void onRowLongClicked(int position) {
+                    public void onRowLongClicked(int position, RecyclerView.ViewHolder vh) {
                         ToastUtil.makeToast(getApplicationContext(), "Row " + (position + 1) + " long clicked!");
+                        itemTouchHelper.startDrag(vh);
                     }
                 })
                 .setSwipeOptionViews(R.id.add, R.id.edit, R.id.change)
@@ -206,7 +214,7 @@ public class MainActivity extends AppCompatActivity implements RecyclerTouchList
         this.touchListener = listener;
     }
 
-    private class MainAdapter extends RecyclerView.Adapter<MainAdapter.MainViewHolder> {
+    private class MainAdapter extends RecyclerView.Adapter<MainAdapter.MainViewHolder> implements MyItemTouchCallback.ItemTouchAdapter  {
         LayoutInflater inflater;
         List<RowModel> modelList;
 
@@ -229,6 +237,29 @@ public class MainActivity extends AppCompatActivity implements RecyclerTouchList
         @Override
         public int getItemCount() {
             return modelList.size();
+        }
+
+        @Override
+        public void onMove(int fromPosition, int toPosition) {
+            if (fromPosition==modelList.size()-1 || toPosition==modelList.size()-1){
+                return;
+            }
+            if (fromPosition < toPosition) {
+                for (int i = fromPosition; i < toPosition; i++) {
+                    Collections.swap(modelList, i, i + 1);
+                }
+            } else {
+                for (int i = fromPosition; i > toPosition; i--) {
+                    Collections.swap(modelList, i, i - 1);
+                }
+            }
+            notifyItemMoved(fromPosition, toPosition);
+        }
+
+        @Override
+        public void onSwiped(int position) {
+            modelList.remove(position);
+            notifyItemRemoved(position);
         }
 
         class MainViewHolder extends RecyclerView.ViewHolder {
