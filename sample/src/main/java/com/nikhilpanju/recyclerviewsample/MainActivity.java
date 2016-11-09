@@ -3,6 +3,7 @@ package com.nikhilpanju.recyclerviewsample;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -19,12 +20,13 @@ import android.widget.TextView;
 import com.nikhilpanju.recyclerviewenhanced.MyItemTouchCallback;
 import com.nikhilpanju.recyclerviewenhanced.OnActivityTouchListener;
 import com.nikhilpanju.recyclerviewenhanced.RecyclerTouchListener;
+import com.nikhilpanju.recyclerviewenhanced.XSwipeRefreshLayout;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements RecyclerTouchListener.RecyclerTouchListenerHelper {
+public class MainActivity extends AppCompatActivity implements RecyclerTouchListener.RecyclerTouchListenerHelper, XSwipeRefreshLayout.OnLoadMoreListener, SwipeRefreshLayout.OnRefreshListener {
 
     RecyclerView mRecyclerView;
     ItemTouchHelper mItenTouchHelper;
@@ -34,6 +36,7 @@ public class MainActivity extends AppCompatActivity implements RecyclerTouchList
     private RecyclerTouchListener onTouchListener;
     private int openOptionsPosition;
     private OnActivityTouchListener touchListener;
+    private XSwipeRefreshLayout mXsrRv;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +57,10 @@ public class MainActivity extends AppCompatActivity implements RecyclerTouchList
         mAdapter = new MainAdapter(this, getData());
         mRecyclerView.setAdapter(mAdapter);
         mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+        mXsrRv = (XSwipeRefreshLayout) findViewById(R.id.xsr_rv);
+        mXsrRv.setOnLoadMoreListener(this);
+        mXsrRv.setOnRefreshListener(this);
 
         final ItemTouchHelper itemTouchHelper = new ItemTouchHelper(new MyItemTouchCallback(mAdapter));
         itemTouchHelper.attachToRecyclerView(mRecyclerView);
@@ -101,7 +108,8 @@ public class MainActivity extends AppCompatActivity implements RecyclerTouchList
     @Override
     protected void onResume() {
         super.onResume();
-        mRecyclerView.addOnItemTouchListener(onTouchListener); }
+        mRecyclerView.addOnItemTouchListener(onTouchListener);
+    }
 
     @Override
     protected void onPause() {
@@ -214,43 +222,58 @@ public class MainActivity extends AppCompatActivity implements RecyclerTouchList
         this.touchListener = listener;
     }
 
-    private class MainAdapter extends RecyclerView.Adapter<MainAdapter.MainViewHolder> implements MyItemTouchCallback.ItemTouchAdapter  {
+    @Override
+    public void onLoadMore() {
+        getData();
+        mXsrRv.setLoadMore(false);
+    }
+
+    @Override
+    public void onRefresh() {
+        getData();
+        mXsrRv.setRefreshing(false);
+    }
+
+    private class MainAdapter extends XSwipeRefreshLayout.LoadMoreRvAdapter<RowModel> implements MyItemTouchCallback.ItemTouchAdapter {
         LayoutInflater inflater;
-        List<RowModel> modelList;
 
         public MainAdapter(Context context, List<RowModel> list) {
             inflater = LayoutInflater.from(context);
-            modelList = new ArrayList<>(list);
+            mDatas = new ArrayList<>(list);
         }
 
         @Override
         public MainViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View view = inflater.inflate(R.layout.recycler_row, parent, false);
+            View view;
+            if (TYPE_ITEM == viewType) {
+                view = inflater.inflate(R.layout.recycler_row, parent, false);
+            } else {
+                view = inflater.inflate(R.layout.footer_view, parent, false);
+            }
             return new MainViewHolder(view);
         }
 
         @Override
-        public void onBindViewHolder(MainViewHolder holder, int position) {
-            holder.bindData(modelList.get(position));
-        }
-
-        @Override
-        public int getItemCount() {
-            return modelList.size();
+        public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+            if (position == mDatas.size() && showLoadMore) {
+                //
+            } else {
+                ((MainViewHolder) holder).bindData(mDatas.get(position));
+            }
         }
 
         @Override
         public void onMove(int fromPosition, int toPosition) {
-            if (fromPosition==modelList.size()-1 || toPosition==modelList.size()-1){
+            if (fromPosition == mDatas.size() - 1 || toPosition == mDatas.size() - 1) {
                 return;
             }
             if (fromPosition < toPosition) {
                 for (int i = fromPosition; i < toPosition; i++) {
-                    Collections.swap(modelList, i, i + 1);
+                    Collections.swap(mDatas, i, i + 1);
                 }
             } else {
                 for (int i = fromPosition; i > toPosition; i--) {
-                    Collections.swap(modelList, i, i - 1);
+                    Collections.swap(mDatas, i, i - 1);
                 }
             }
             notifyItemMoved(fromPosition, toPosition);
@@ -258,7 +281,7 @@ public class MainActivity extends AppCompatActivity implements RecyclerTouchList
 
         @Override
         public void onSwiped(int position) {
-            modelList.remove(position);
+            mDatas.remove(position);
             notifyItemRemoved(position);
         }
 
